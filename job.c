@@ -123,6 +123,15 @@ void* do_job(struct que_t *q)
 }
 
 
+pthread_t* start_job_thread(struct que_t *q, pthread_t *thread)
+{
+	struct job_t j;
+	que_pop(q, &j);  /* remove job, save in j */
+
+	pthread_create(thread, NULL, (j.function), (j.args));
+	return thread;
+}
+
 
 /* walk the que, doing all jobs in order */
 void flush_que(struct que_t *q)

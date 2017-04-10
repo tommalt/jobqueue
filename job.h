@@ -64,7 +64,7 @@ void* do_job(struct que_t *q);          /* performs job, returning result */
 
 void flush_que(struct que_t *q);        /* performs all jobs, discarding results */
 
-
+pthread_t* start_job_thread(struct que_t *q, pthread_t *thread);
 
 
 /* misc stuff */

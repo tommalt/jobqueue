@@ -1,11 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <assert.h>
 
 #include "job.h"
 
 /*
  * a small implementation of a job queue in c
+ *
+ *
+ * the first part shows how to add jobs, and flush
+ * the job queue.
+ *
+ * next, how to execute jobs in order, saving their
+ * return values
+ *
+ * then, running each job on its own thread,
+ * again, saving the return value of the job
+ *
  *
  */
 
@@ -42,17 +54,23 @@ int main()
 	char *msg2 = "from job two!";
 	char *msg3 = "from job three!";
 
+
 	struct job_t j1 = newJob(say_something, msg1);
 	struct job_t j2 = newJob(say_something, msg2);
 	struct job_t j3 = newJob(say_something, msg3);
 
 
-	/* now, push the jobs onto the que stack */
+	/* now, push the jobs onto the que */
 	que_push(q, &j1);
 	que_push(q, &j2);
 	que_push(q, &j3);
 
 	putchar('\n');
+
+	/*
+	 * executing the jobs
+	 *
+	 */
 	flush_que(q);  /* flush_que will execute all of the jobs
 			  ignoring their return values.
 
@@ -70,7 +88,14 @@ int main()
 	flush_que(q);
 
 
-	/* example of using do_job */
+
+	/*
+	 *
+	 * example of using do_job, no que_flush
+	 * (executing jobs and getting the return values)
+	 *
+	 * task : pass number as input, double it in-place
+	 */
 
 	int x = 5;
 	int y = 10;
@@ -96,10 +121,14 @@ int main()
 	printf("x = %d, y = %d\n", x, y);
 
 
-	/* example of using pthread to process jobs concurrently */
 
-	int njob = 3;
-	pthread_t threads[njob];
+	/*
+	 *
+	 * example of using pthread to process jobs concurrently
+	 *
+	 *
+	 * task : take the sum of three arrays
+	 */
 
 	double a[10];
 	double b[10];
@@ -113,19 +142,48 @@ int main()
 		c[i] = i + i + i / 3.0;
 	}
 
+	/* creating the jobs */
 	j1 = newJob(sum, a);
 	j2 = newJob(sum, b);
 	j3 = newJob(sum, c);
 
+
+	/* add to the que */
 	que_push(q, &j1);
 	que_push(q, &j2);
 	que_push(q, &j3);
 
+
+	int njob = 3;
+	pthread_t threads[njob];
+
+
+	/* start each job on their own thread */
+	/* to get the return value, use pthread_join (see below) */
+
+	pthread_t *pt = (threads+0); /* pointer to first thread */
+
 	while (q->head != NULL) {
-		void *ret = do_job(q);
-		printf("sum = %g\n", *(double*)ret);
-		free(ret);
+		start_job_thread(q, pt);   /* saves pointer to thread in pt */
+		++pt;
 	}
+
+
+	double results[njob];
+	results[0] = 0;
+	results[1] = 0;
+	results[2] = 0;
+
+	double *sum;
+	for (i = 0; i < njob; ++i, ++sum) {
+		pthread_join(threads[i], (void*)&sum);
+		results[i] = *sum;
+		printf("sum of array %d = %g\n", i, results[i]);
+		free(sum); /* summation term malloc'd in this job
+			      must be free'd each time */
+	}
+
+
 
 
 	/* clean up the queue, deleting any entries in the queue */
@@ -145,20 +203,26 @@ int main()
 
 void* say_something(void *arg)
 {
+	assert(arg != NULL);
 	printf("Hello, %s\n", (char *)arg);
 	return NULL;
 }
 
 
+
 void* print_num(void *arg)
 {
+	assert(arg != NULL);
 	printf("print_num = %d\n", *(int*)arg);
 	return NULL;
 }
 
 
+
+/* multiply by two, saving inplace */
 void* mult2(void *arg)
 {
+	assert(arg != NULL);
 	int *ret = (int *)arg;
 
 	*ret *= 2;
@@ -168,6 +232,11 @@ void* mult2(void *arg)
 
 
 
+
+/* NOTE: the sum term in this function must be
+ * free'd after each call.
+ * see the pthread example in main
+ */
 void* sum(void *arg)
 {
 	double *array = (double *)arg;
