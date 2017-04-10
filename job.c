@@ -123,6 +123,9 @@ void* do_job(struct que_t *q)
 }
 
 
+/* similar to `do_job`, but instead start a new thread
+ * and return a pointer to the thread handle
+ */
 pthread_t* start_job_thread(struct que_t *q, pthread_t *thread)
 {
 	struct job_t j;
