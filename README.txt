@@ -1,4 +1,4 @@
-A simple implementation of a job queue stack in C
+A simple implementation of a job queue in C
 
 main.c shows example usage.
 
